@@ -40,6 +40,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
 
+	"k8s.io/client-go/dynamic"
 	"k8s.io/kube-state-metrics/v2/internal/store"
 	"k8s.io/kube-state-metrics/v2/pkg/allowdenylist"
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
@@ -150,12 +151,13 @@ func main() {
 
 	proc.StartReaper()
 
-	kubeClient, vpaClient, err := createKubeClient(opts.Apiserver, opts.Kubeconfig)
+	kubeClient, vpaClient, userClient, err := createKubeClient(opts.Apiserver, opts.Kubeconfig)
 	if err != nil {
 		klog.Fatalf("Failed to create client: %v", err)
 	}
 	storeBuilder.WithKubeClient(kubeClient)
 	storeBuilder.WithVPAClient(vpaClient)
+	storeBuilder.WithUserClient(userClient)
 	storeBuilder.WithSharding(opts.Shard, opts.TotalShards)
 	storeBuilder.WithAllowAnnotations(opts.AnnotationsAllowList)
 	storeBuilder.WithAllowLabels(opts.LabelsAllowList)
@@ -222,10 +224,10 @@ func main() {
 	klog.Info("Exiting")
 }
 
-func createKubeClient(apiserver string, kubeconfig string) (clientset.Interface, vpaclientset.Interface, error) {
+func createKubeClient(apiserver string, kubeconfig string) (clientset.Interface, vpaclientset.Interface, dynamic.Interface, error) {
 	config, err := clientcmd.BuildConfigFromFlags(apiserver, kubeconfig)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	config.UserAgent = version.Version
@@ -234,12 +236,17 @@ func createKubeClient(apiserver string, kubeconfig string) (clientset.Interface,
 
 	kubeClient, err := clientset.NewForConfig(config)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	vpaClient, err := vpaclientset.NewForConfig(config)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
+	}
+
+	userClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 	// Informers don't seem to do a good job logging error messages when it
 	// can't reach the server, making debugging hard. This makes it easier to
@@ -247,13 +254,13 @@ func createKubeClient(apiserver string, kubeconfig string) (clientset.Interface,
 	klog.Infof("Testing communication with server")
 	v, err := kubeClient.Discovery().ServerVersion()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "error while trying to communicate with apiserver")
+		return nil, nil, nil, errors.Wrap(err, "error while trying to communicate with apiserver")
 	}
 	klog.Infof("Running with Kubernetes cluster version: v%s.%s. git version: %s. git tree state: %s. commit: %s. platform: %s",
 		v.Major, v.Minor, v.GitVersion, v.GitTreeState, v.GitCommit, v.Platform)
 	klog.Infof("Communication with server successful")
 
-	return kubeClient, vpaClient, nil
+	return kubeClient, vpaClient, userClient, nil
 }
 
 func buildTelemetryServer(registry prometheus.Gatherer) *http.ServeMux {
