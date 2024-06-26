@@ -41,6 +41,10 @@ jobs:
           password: ${{ secrets.DOCKERHUB_PASS }}
 
       - name: Build and Push image
-        run: |
-          make push REGISTRY=beclab TAG=${{ github.event.inputs.tags }}
+              uses: docker/build-push-action@v3
+              with:
+                push: true
+                tags: beclab/kube-state-metrics:${{ github.event.inputs.tags }}
+                file: Dockerfile
+                platforms: linux/amd64,linux/arm64
           
