@@ -40,11 +40,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASS }}
 
-      - name: Build image
+      - name: Build and Push image
         run: |
-          make all REGISTRY=beclab/kube-state-metrics version=${{ github.event.inputs.tags }}
-
-      - name: Push image
-        run: |
-          make push REGISTRY=beclab/kube-state-metrics version=${{ github.event.inputs.tags }}
+          make push REGISTRY=beclab/kube-state-metrics TAG=${{ github.event.inputs.tags }}
           
