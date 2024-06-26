@@ -42,9 +42,9 @@ jobs:
 
       - name: Build image
         run: |
-          make all REGISTRY=beclab/kube-state-metrics
+          make all REGISTRY=beclab/kube-state-metrics version=${{ github.event.inputs.tags }}
 
       - name: Push image
         run: |
-          make push
+          make push REGISTRY=beclab/kube-state-metrics version=${{ github.event.inputs.tags }}
           
