@@ -42,5 +42,5 @@ jobs:
 
       - name: Build and Push image
         run: |
-          make push REGISTRY=beclab/kube-state-metrics TAG=${{ github.event.inputs.tags }}
+          make push REGISTRY=beclab TAG=${{ github.event.inputs.tags }}
           
